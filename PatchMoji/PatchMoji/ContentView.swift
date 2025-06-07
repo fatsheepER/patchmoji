@@ -14,60 +14,79 @@ struct ContentView: View {
         ZStack {
             Color.accentBackground
                 .ignoresSafeArea()
-            
-            VStack(spacing: 13) {
-                HStack(spacing: 0) {
-                    Text("Patch")
-                        .foregroundStyle(.accentDarkBlack.shadow(.inner(radius: 2)))
-                    Text("Moji")
-                        .foregroundStyle(.accent.shadow(.inner(radius: 2)))
-                }
-                .font(.system(size: 70, weight: .bold, design: .rounded))
-                .animation(.smooth.speed(1))
-                .zIndex(0)
-                
-                // Edit area
-                if isEditing {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 30)
-                            .foregroundStyle(.accentDarkBlack.shadow(.inner(radius: 2)))
-                        
-                        Text("Edit view")
-                    }
-                    .padding(.horizontal, 20)
-                    .frame(height: 500)
+            if (!isEditing) {
+                homePage
+                    .transition(.move(edge: .leading))
+            } else {
+                editpage
                     .transition(.move(edge: .trailing))
-                    .zIndex(1)
+            }
+        }
+        .animation(.bouncy.speed(1.5))
+    }
+    
+    var homePage: some View {
+        VStack(spacing: 13) {
+            Spacer()
+            
+            HStack(spacing: 0) {
+                Text("Patch")
+                    .foregroundStyle(.accentDarkBlack.shadow(.inner(radius: 2)))
+                Text("Moji")
+                    .foregroundStyle(.accent.shadow(.inner(radius: 2)))
+            }
+            .font(.system(size: 70, weight: .bold, design: .rounded))
+            
+            Spacer()
+            
+            Button {
+                withAnimation {
+                    isEditing = true
+                }
+            } label: {
+                LargeButtonView(
+                    labelText: "导入图片",
+                    labelSystemName: "plus",
+                    showShadow: true)
+            }
+            .padding(.horizontal, 20)
+        }
+        .animation(.smooth.speed(1.7))
+    }
+    
+    var editpage: some View {
+        VStack {
+            ZStack {
+                RoundedRectangle(cornerRadius: 30)
+                    .foregroundStyle(.accentDarkBlack.shadow(.inner(radius: 2)))
+                
+                Text("Edit view")
+            }
+            .padding(.horizontal, 20)
+            .transition(.move(edge: .trailing))
+            
+            HStack {
+                Button {
+                    withAnimation {
+                        isEditing = false
+                    }
+                } label: {
+                    LargeButtonView(color: .accentDarkBlack, subcolor: .white.opacity(0.5), labelSystemName: "chevron.left")
+                        .frame(width: 100)
                 }
                 
-                HStack {
-                    Button {
-                        withAnimation {
-                            isEditing = false
-                        }
-                    } label: {
-                        LargeButtonView(color: .accentDarkBlack, subcolor: .white.opacity(0.5), labelSystemName: "chevron.left")
-                            .frame(width: isEditing ? 100 : 0)
+                Button {
+                    withAnimation {
+                        isEditing = true
                     }
-                    .opacity(isEditing ? 1 : 0)
-                    
-                    Button {
-                        withAnimation {
-                            isEditing = true
-                        }
-                    } label: {
-                        LargeButtonView(
-                            labelText: isEditing ? "导出图片" : "导入图片",
-                            labelSystemName: isEditing ? "square.and.arrow.up" : "plus",
-                            showShadow: !isEditing)
-                    }
-                    
+                } label: {
+                    LargeButtonView(
+                        labelText: "导出图片",
+                        labelSystemName: "square.and.arrow.up")
                 }
-                .padding(.top, 10)
-                .padding(.horizontal, 20)
-                .zIndex(0)
             }
-            .animation(.smooth.speed(1.7))
+            .padding(.top, 10)
+            .padding(.horizontal, 20)
         }
     }
 }
