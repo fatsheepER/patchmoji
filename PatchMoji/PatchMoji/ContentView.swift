@@ -18,17 +18,32 @@ import AVFoundation
 private let log = Logger(subsystem: "com.example.FERDemo", category: "Pipeline")
 
 // label - emoji 映射
-private func emoji(for label: String) -> String {
-    switch label.lowercased() {
-    case "happy", "smile", "smiling":   return "😊"
-    case "sad", "sadness":                return "😢"
-    case "angry", "anger":                return "😠"
-    case "surprise", "surprised":        return "😮"
-    case "disgust":                        return "🤢"
-    case "fear":                           return "😱"
-    default:                                return "😐" // neutral / fallback
-    }
+private let emojiDict: [String: [String]] = [
+    "happy":    ["😊","😄","😁","😆","🙂","😸"],
+    "sad":      ["😢","😭","🥺","🙁","😿"],
+    "angry":    ["😠","😡","🤬","😤","👿"],
+    "surprise": ["😮","😯","😲","🤯","😳"],
+    "disgust":  ["🤢","🤮","😖","😫"],
+    "fear":     ["😱","😨","😰","😧","😖"],
+    "neutral":  ["😐","😑","🙂"]
+]
+
+private func randomEmoji(for label: String) -> String {
+    let key = label.lowercased()
+    return emojiDict[key, default: emojiDict["neutral"]!].randomElement()!
 }
+
+//private func emoji(for label: String) -> String {
+//    switch label.lowercased() {
+//    case "happy", "smile", "smiling":   return "😊"
+//    case "sad", "sadness":                return "😢"
+//    case "angry", "anger":                return "😠"
+//    case "surprise", "surprised":        return "😮"
+//    case "disgust":                        return "🤢"
+//    case "fear":                           return "😱"
+//    default:                                return "😐" // neutral / fallback
+//    }
+//}
 
 extension CGImagePropertyOrientation {
     init(_ ui: UIImage.Orientation) {
@@ -52,6 +67,7 @@ struct ContentView: View {
     @State var isEditing: Bool = false
     @State private var showingSaveAlert = false
     @State private var selectedIndex: Int = 0
+    @State private var selectedLabel: String? = nil
     
     // Data state
     @State private var pickerItem: PhotosPickerItem?
@@ -109,18 +125,6 @@ struct ContentView: View {
                     showShadow: true)
             }
             .padding(.horizontal, 20)
-            
-//            Button {
-//                withAnimation {
-//                    isEditing = true
-//                }
-//            } label: {
-//                LargeButtonView(
-//                    labelText: "导入图片",
-//                    labelSystemName: "plus",
-//                    showShadow: true)
-//            }
-//            .padding(.horizontal, 20)
         }
         .animation(.smooth.speed(1.7))
     }
@@ -136,6 +140,7 @@ struct ContentView: View {
                     selectedIndex: selectedIndex
                 ) { idx in
                     self.selectedIndex = idx
+                    self.selectedLabel = preds[idx].first?.label
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -144,17 +149,56 @@ struct ContentView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             
-            // Emoji 选择栏
-            ZStack {
-                RoundedRectangle(cornerRadius: 30)
-                    .foregroundStyle(.accentDarkBlack.shadow(.inner(radius: 2)))
-                
-                Text("Emojis view")
+            // Label 选择栏
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack {
+                    ForEach(Array(emojiDict.keys), id: \.self) { label in
+                        Button {
+                            self.selectedLabel = label
+                        } label: {
+                            Text(label.capitalized)
+                                .font(.system(size: 16, weight: .bold, design: .rounded))
+                                .foregroundStyle(.white.opacity(0.67))
+                                .padding(.horizontal, 3)
+                                .frame(height: 27)
+                                .background(selectedLabel == label ? .accentDark : .clear)
+                                .clipShape(Capsule())
+                        }
+                    }
+                }
             }
             .padding(.horizontal, 20)
-            .frame(maxHeight: 100)
             .transition(.move(edge: .trailing))
             
+            // Emoji 选择栏
+            if let label = selectedLabel {
+                let emojiList = emojiDict[label]!
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack {
+                        ForEach(emojiList, id: \.self) { emoji in
+                            Button {
+                                emojis[selectedIndex] = emoji
+                            } label: {
+                                Text(emoji)
+                                    .font(.system(size: 50))
+                                    .frame(width: 80, height: 80)
+                                    .background(emojis[selectedIndex] == emoji ? .accentDark : .clear)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                            }
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+                .transition(.move(edge: .trailing))
+                .frame(minHeight: 110)
+                .background(.accentDarkBlack)
+                .clipShape(RoundedRectangle(cornerRadius: 30))
+                .padding(.horizontal, 20)
+            } else {
+                ProgressView()
+            }
+            
+            // 返回与保存按钮
             HStack {
                 Button {
                     withAnimation {
@@ -194,6 +238,7 @@ struct ContentView: View {
                 self.uiImage = img
                 self.selectedIndex = 0  // 每次换图默认选第 0 张脸
                 self.isEditing = true  // 进入编辑界面
+                self.selectedLabel = nil  // 清空之前的识别结果
             }
             detectFaces(in: img)
         }
@@ -217,7 +262,7 @@ struct ContentView: View {
         catch { log.error("handler.perform(face) \(error.localizedDescription)") }
     }
 
-    /// 3 Core ML 推理（Vision 自动 Crop & Scale）
+    // 3. ResNet18 推理单个人脸（输入 Vision Crop 的 Observation）
     func classify(face obs: VNFaceObservation,
                       in cgImage: CGImage,
                   orientation: CGImagePropertyOrientation) -> [(label: String, prob: Float)]? {
@@ -255,6 +300,7 @@ struct ContentView: View {
         return outTop3.isEmpty ? nil : outTop3
     }
     
+    // 4. 逐个面部进行表情推理 结果存入 ContentView 成员变量
     func classifyAllFaces(_ faces: [VNFaceObservation],
                               in cgImage: CGImage,
                               orientation: CGImagePropertyOrientation) {
@@ -265,20 +311,21 @@ struct ContentView: View {
             for obs in faces {
                 if let top = classify(face: obs, in: cgImage, orientation: orientation) {
                     results.append(top)
-                    chosenEmoji.append(emoji(for: top.first!.label))
+                    chosenEmoji.append(randomEmoji(for: top.first!.label))
                 }
             }
             let ms = (CACurrentMediaTime() - t0) * 1000
             await MainActor.run {
                 self.preds = results
                 self.emojis = chosenEmoji
+                self.selectedLabel = results.first?.first?.0
                 self.elapsed = ms
             }
             log.info("完成所有人脸推理，共 \(faces.count) 张，耗时 \(ms, format: .fixed) ms")
         }
     }
     
-    // Save composited image
+    // 5. 渲染并保存含有 Emoji 覆盖的图片
     func saveFinalImage() {
         guard let base = uiImage else { return }
         let overlay = EmojiOverlay(
