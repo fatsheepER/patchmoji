@@ -33,18 +33,6 @@ private func randomEmoji(for label: String) -> String {
     return emojiDict[key, default: emojiDict["neutral"]!].randomElement()!
 }
 
-//private func emoji(for label: String) -> String {
-//    switch label.lowercased() {
-//    case "happy", "smile", "smiling":   return "😊"
-//    case "sad", "sadness":                return "😢"
-//    case "angry", "anger":                return "😠"
-//    case "surprise", "surprised":        return "😮"
-//    case "disgust":                        return "🤢"
-//    case "fear":                           return "😱"
-//    default:                                return "😐" // neutral / fallback
-//    }
-//}
-
 extension CGImagePropertyOrientation {
     init(_ ui: UIImage.Orientation) {
         switch ui {

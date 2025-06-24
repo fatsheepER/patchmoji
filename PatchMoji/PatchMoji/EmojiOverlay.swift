@@ -59,18 +59,22 @@ struct EmojiOverlay: View {
 
                         context.draw(resolved, at: center, anchor: .center)
 
-                        // 点击交互区域（不可见，但可响应）
-                        var hitPath = Path(ellipseIn: CGRect(x: center.x - diameter/2,
-                                                             y: center.y - diameter/2,
-                                                             width: diameter,
-                                                             height: diameter))
                         if showSelection && selectedIndex == idx {
-                            // 选中高亮 (细红圈)
-                            hitPath = Path(ellipseIn: CGRect(x: center.x - diameter/2 - 2,
-                                                             y: center.y - diameter/2 - 2,
-                                                             width: diameter + 4,
-                                                             height: diameter + 4))
-                            context.stroke(hitPath, with: .color(.red), lineWidth: 3)
+                            // 虚线样式，圆头
+                            let style = StrokeStyle(
+                                lineWidth: 4,
+                                lineCap: .round,
+                                dash: [12, 8]        // 你可微调 dash/gap
+                            )
+
+                            // 画圆
+                            let outline = Path(ellipseIn: CGRect(
+                                x: center.x - diameter/2 - 2,
+                                y: center.y - diameter/2 - 2,
+                                width: diameter + 4,
+                                height: diameter + 4
+                            ))
+                            context.stroke(outline, with: .color(.accent), style: style)
                         }
                         context.drawLayer { _ in }
                     }
